@@ -219,7 +219,7 @@ export function OrdersCrud() {
                 <p className="text-sm text-muted-foreground">{pedido.detalle}</p>
                 <p className="text-sm text-muted-foreground">Entrega: {pedido.fecha_entrega}</p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Badge>{pedido.estado}</Badge>
                 <span className="text-sm font-medium">${pedido.total}</span>
                 <Button variant="outline" size="sm" onClick={() => onEdit(pedido)}>

@@ -226,7 +226,7 @@ export function TransactionsCrud() {
                   <p className="text-sm text-muted-foreground">{transaction.fecha}</p>
                   <p className="text-sm text-muted-foreground">{transaction.descripcion ?? "Sin detalle"}</p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <Badge>{transaction.tipo}</Badge>
                   <span className="text-sm font-medium">${transaction.monto}</span>
                   <Button variant="outline" size="sm" onClick={() => onEdit(transaction)}>

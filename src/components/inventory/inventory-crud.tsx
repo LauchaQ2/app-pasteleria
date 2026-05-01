@@ -176,7 +176,7 @@ export function InventoryCrud() {
                     {item.stock_actual} {item.unidad} / mínimo {item.stock_minimo}
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   {lowStock ? <Badge className="border-destructive text-destructive">Stock bajo</Badge> : null}
                   <Button variant="outline" size="sm" onClick={() => onEdit(item)}>
                     Editar
