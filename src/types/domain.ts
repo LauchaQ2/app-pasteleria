@@ -19,6 +19,16 @@ export interface Pedido {
   total: number;
   pagado: boolean;
   created_at: string;
+  items?: PedidoItem[];
+}
+
+export interface PedidoItem {
+  id: string;
+  pedido_id: string;
+  producto_id: string;
+  cantidad: number;
+  producto_nombre?: string;
+  producto_precio?: number;
 }
 
 export interface DashboardPedido {
@@ -48,6 +58,16 @@ export interface Producto {
   foto_url: string | null;
   activo: boolean;
   created_at: string;
+  receta?: RecetaIngrediente[];
+}
+
+export interface RecetaIngrediente {
+  id?: string;
+  producto_id?: string;
+  inventario_id: string;
+  cantidad: number;
+  inventario_ingrediente?: string;
+  inventario_unidad?: string;
 }
 
 export interface InventarioItem {

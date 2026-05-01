@@ -1,6 +1,6 @@
 begin;
 
-truncate table public.transacciones, public.pedidos, public.inventario, public.productos, public.clientes restart identity cascade;
+truncate table public.transacciones, public.pedido_items, public.producto_recetas, public.pedidos, public.inventario, public.productos, public.clientes restart identity cascade;
 
 insert into public.clientes (nombre, telefono, email, direccion, preferencias)
 values
@@ -24,12 +24,33 @@ values
   ('Huevos', 'un', 90, 60),
   ('Manteca', 'kg', 4, 5);
 
+insert into public.producto_recetas (producto_id, inventario_id, cantidad)
+values
+  ((select id from public.productos where nombre = 'Alfajor artesanal' limit 1), (select id from public.inventario where ingrediente = 'Harina 0000' limit 1), 0.08),
+  ((select id from public.productos where nombre = 'Alfajor artesanal' limit 1), (select id from public.inventario where ingrediente = 'Dulce de leche' limit 1), 0.03),
+  ((select id from public.productos where nombre = 'Alfajor artesanal' limit 1), (select id from public.inventario where ingrediente = 'Chocolate cobertura' limit 1), 0.02),
+  ((select id from public.productos where nombre = 'Torta de chocolate' limit 1), (select id from public.inventario where ingrediente = 'Harina 0000' limit 1), 0.90),
+  ((select id from public.productos where nombre = 'Torta de chocolate' limit 1), (select id from public.inventario where ingrediente = 'Azúcar' limit 1), 0.60),
+  ((select id from public.productos where nombre = 'Torta de chocolate' limit 1), (select id from public.inventario where ingrediente = 'Huevos' limit 1), 10),
+  ((select id from public.productos where nombre = 'Cheesecake frutos rojos' limit 1), (select id from public.inventario where ingrediente = 'Manteca' limit 1), 0.30),
+  ((select id from public.productos where nombre = 'Cheesecake frutos rojos' limit 1), (select id from public.inventario where ingrediente = 'Azúcar' limit 1), 0.45),
+  ((select id from public.productos where nombre = 'Box desayuno' limit 1), (select id from public.inventario where ingrediente = 'Harina 0000' limit 1), 0.35),
+  ((select id from public.productos where nombre = 'Box desayuno' limit 1), (select id from public.inventario where ingrediente = 'Manteca' limit 1), 0.20);
+
 insert into public.pedidos (cliente_id, cliente_nombre, detalle, estado, fecha_entrega, total, pagado)
 values
   ((select id from public.clientes where nombre = 'María Gómez' limit 1), 'María Gómez', 'Torta de chocolate 2kg + 12 alfajores', 'confirmado', current_date + 2, 49600, false),
   ((select id from public.clientes where nombre = 'Juan Pérez' limit 1), 'Juan Pérez', 'Cheesecake 1kg para cumpleaños', 'en_produccion', current_date + 1, 26000, true),
   ((select id from public.clientes where nombre = 'Lucía Fernández' limit 1), 'Lucía Fernández', '50 alfajores surtidos para evento', 'pendiente', current_date + 5, 90000, false),
   ((select id from public.clientes where nombre = 'María Gómez' limit 1), 'María Gómez', 'Box desayuno premium x2', 'listo', current_date, 39000, true);
+
+insert into public.pedido_items (pedido_id, producto_id, cantidad)
+values
+  ((select id from public.pedidos where cliente_nombre = 'María Gómez' and total = 49600 order by created_at asc limit 1), (select id from public.productos where nombre = 'Torta de chocolate' limit 1), 1),
+  ((select id from public.pedidos where cliente_nombre = 'María Gómez' and total = 49600 order by created_at asc limit 1), (select id from public.productos where nombre = 'Alfajor artesanal' limit 1), 12),
+  ((select id from public.pedidos where cliente_nombre = 'Juan Pérez' and total = 26000 order by created_at asc limit 1), (select id from public.productos where nombre = 'Cheesecake frutos rojos' limit 1), 1),
+  ((select id from public.pedidos where cliente_nombre = 'Lucía Fernández' and total = 90000 order by created_at asc limit 1), (select id from public.productos where nombre = 'Alfajor artesanal' limit 1), 50),
+  ((select id from public.pedidos where cliente_nombre = 'María Gómez' and total = 39000 order by created_at asc limit 1), (select id from public.productos where nombre = 'Box desayuno' limit 1), 2);
 
 insert into public.transacciones (tipo, categoria, descripcion, monto, fecha, pedido_id)
 values

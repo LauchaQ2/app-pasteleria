@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import type { Producto } from "@/types/domain";
+import type { InventarioItem, Producto, RecetaIngrediente } from "@/types/domain";
 
 interface ProductoPayload {
   nombre: string;
@@ -26,8 +26,16 @@ const initialForm: ProductoPayload = {
   activo: true,
 };
 
+const initialReceta: Array<{ inventario_id: string; cantidad: number }> = [
+  { inventario_id: "", cantidad: 0 },
+];
+
 export function ProductsCrud() {
   const [productos, setProductos] = useState<Producto[]>([]);
+  const [inventario, setInventario] = useState<InventarioItem[]>([]);
+  const [receta, setReceta] = useState<Array<{ inventario_id: string; cantidad: number }>>(
+    initialReceta
+  );
   const [form, setForm] = useState<ProductoPayload>(initialForm);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -43,8 +51,39 @@ export function ProductsCrud() {
     setProductos((await response.json()) as Producto[]);
   }
 
+  async function loadInventario() {
+    const response = await fetch("/api/inventario", { cache: "no-store" });
+    if (!response.ok) {
+      setError("No se pudo cargar inventario para la receta");
+      return;
+    }
+    setInventario((await response.json()) as InventarioItem[]);
+  }
+
+  async function loadReceta(productoId: string) {
+    const response = await fetch(`/api/recetas?producto_id=${productoId}`, {
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      setError("No se pudo cargar la receta del producto");
+      return;
+    }
+
+    const data = (await response.json()) as RecetaIngrediente[];
+    setReceta(
+      data.length > 0
+        ? data.map((item) => ({
+            inventario_id: item.inventario_id,
+            cantidad: Number(item.cantidad),
+          }))
+        : initialReceta
+    );
+  }
+
   useEffect(() => {
     void loadProductos();
+    void loadInventario();
   }, []);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -69,8 +108,26 @@ export function ProductsCrud() {
       return;
     }
 
+    const producto = (await response.json()) as Producto;
+
+    const recetaResponse = await fetch("/api/recetas", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        producto_id: producto.id,
+        ingredientes: receta,
+      }),
+    });
+
+    if (!recetaResponse.ok) {
+      const payload = (await recetaResponse.json()) as { error?: string };
+      setError(payload.error ?? "No se pudo guardar la receta");
+      return;
+    }
+
     setEditingId(null);
     setForm(initialForm);
+    setReceta(initialReceta);
     await loadProductos();
   }
 
@@ -93,7 +150,38 @@ export function ProductsCrud() {
       foto_url: producto.foto_url ?? "",
       activo: producto.activo,
     });
+    void loadReceta(producto.id);
   }
+
+  function addRecetaRow() {
+    setReceta((prev) => [...prev, { inventario_id: "", cantidad: 0 }]);
+  }
+
+  function removeRecetaRow(index: number) {
+    setReceta((prev) => {
+      const next = prev.filter((_, recetaIndex) => recetaIndex !== index);
+      return next.length > 0 ? next : initialReceta;
+    });
+  }
+
+  function updateRecetaRow(index: number, patch: { inventario_id?: string; cantidad?: number }) {
+    setReceta((prev) =>
+      prev.map((row, recetaIndex) => (recetaIndex === index ? { ...row, ...patch } : row))
+    );
+  }
+
+  const recetaPreview = useMemo(() => {
+    return receta
+      .filter((item) => item.inventario_id && Number(item.cantidad) > 0)
+      .map((item) => {
+        const ingrediente = inventario.find((inv) => inv.id === item.inventario_id);
+        return ingrediente
+          ? `${ingrediente.ingrediente}: ${item.cantidad} ${ingrediente.unidad}`
+          : "";
+      })
+      .filter(Boolean)
+      .join(" • ");
+  }, [receta, inventario]);
 
   return (
     <div className="grid gap-4 lg:grid-cols-[360px_1fr]">
@@ -157,6 +245,58 @@ export function ProductsCrud() {
               />
               Activo
             </label>
+            <div className="space-y-2 rounded-md border p-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium">Receta (ingredientes desde inventario)</p>
+                <Button type="button" variant="outline" size="sm" onClick={addRecetaRow}>
+                  Agregar ingrediente
+                </Button>
+              </div>
+              <div className="space-y-2">
+                {receta.map((row, index) => (
+                  <div key={`${index}-${editingId ?? "new"}`} className="grid gap-2 sm:grid-cols-[1fr_110px_auto]">
+                    <select
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                      value={row.inventario_id}
+                      onChange={(event) =>
+                        updateRecetaRow(index, { inventario_id: event.target.value })
+                      }
+                    >
+                      <option value="">Selecciona ingrediente</option>
+                      {inventario.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.ingrediente} ({item.unidad})
+                        </option>
+                      ))}
+                    </select>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={row.cantidad}
+                      onChange={(event) =>
+                        updateRecetaRow(index, { cantidad: Number(event.target.value) || 0 })
+                      }
+                    />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => removeRecetaRow(index)}
+                    >
+                      Quitar
+                    </Button>
+                  </div>
+                ))}
+              </div>
+              {recetaPreview ? (
+                <p className="text-xs text-muted-foreground">{recetaPreview}</p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Este producto aún no tiene ingredientes asignados.
+                </p>
+              )}
+            </div>
             {error ? <p className="text-sm text-destructive">{error}</p> : null}
             <div className="flex gap-2">
               <Button type="submit">{isEditing ? "Actualizar" : "Crear"}</Button>
@@ -167,6 +307,7 @@ export function ProductsCrud() {
                   onClick={() => {
                     setEditingId(null);
                     setForm(initialForm);
+                    setReceta(initialReceta);
                   }}
                 >
                   Cancelar
