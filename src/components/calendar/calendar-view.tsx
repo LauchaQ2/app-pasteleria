@@ -112,13 +112,13 @@ export function CalendarView() {
   return (
     <div className="space-y-4">
       {/* Controles */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex gap-1 rounded-lg border p-1">
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+        <div className="flex gap-1 rounded-lg border p-1 self-start">
           {(["semana", "quincenal", "mes"] as Vista[]).map((v) => (
             <button
               key={v}
               onClick={() => setVista(v)}
-              className={`rounded-md px-3 py-1 text-sm font-medium transition-colors ${
+              className={`rounded-md px-2 py-1 text-xs sm:px-3 sm:text-sm font-medium transition-colors ${
                 vista === v
                   ? "bg-primary text-primary-foreground"
                   : "hover:bg-accent text-muted-foreground"
@@ -129,7 +129,7 @@ export function CalendarView() {
           ))}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2">
           <Button
             variant="outline"
             size="sm"
@@ -144,7 +144,7 @@ export function CalendarView() {
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <span className="min-w-40 text-center text-sm font-medium capitalize">
+          <span className="flex-1 text-center text-sm font-medium capitalize sm:min-w-40">
             {titulo(vista, referencia)}
           </span>
           <Button
@@ -159,19 +159,20 @@ export function CalendarView() {
 
       {/* Grilla */}
       <Card>
-        <CardContent className="p-0 overflow-x-auto">
+        <CardContent className="p-0">
           {loading ? (
             <p className="p-6 text-sm text-muted-foreground">Cargando pedidos…</p>
           ) : (
-            <div className="min-w-[560px]">
+            <div className="w-full">
               {/* Cabecera días */}
               <div className="grid grid-cols-7 border-b">
                 {diasSemana.map((d) => (
                   <div
                     key={d}
-                    className="py-2 text-center text-xs font-semibold text-muted-foreground uppercase"
+                    className="py-2 text-center text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase"
                   >
-                    {d}
+                    <span className="hidden sm:inline">{d}</span>
+                    <span className="sm:hidden">{d.charAt(0)}</span>
                   </div>
                 ))}
               </div>
@@ -180,7 +181,7 @@ export function CalendarView() {
               <div
                 className="grid grid-cols-7"
                 style={{
-                  gridTemplateRows: `repeat(${Math.ceil(dias.length / 7)}, minmax(100px, auto))`,
+                  gridTemplateRows: `repeat(${Math.ceil(dias.length / 7)}, minmax(60px, auto))`,
                 }}
               >
                 {dias.map((dia, index) => {
@@ -191,12 +192,10 @@ export function CalendarView() {
                   return (
                     <div
                       key={dia.toISOString()}
-                      className={`min-h-[100px] border-b border-r p-1 ${
-                        index % 7 === 0 ? "" : ""
-                      } ${!esMesActual && vista === "mes" ? "bg-muted/30" : ""}`}
+                      className={`min-h-[60px] sm:min-h-[100px] border-b border-r p-0.5 sm:p-1 ${!esMesActual && vista === "mes" ? "bg-muted/30" : ""}`}
                     >
                       <div
-                        className={`mb-1 flex h-7 w-7 items-center justify-center rounded-full text-sm font-medium ${
+                        className={`mb-0.5 flex h-5 w-5 sm:h-7 sm:w-7 items-center justify-center rounded-full text-[10px] sm:text-sm font-medium ${
                           esHoy
                             ? "bg-primary text-primary-foreground"
                             : !esMesActual && vista === "mes"
@@ -211,11 +210,11 @@ export function CalendarView() {
                         {pedidosDia.map((pedido) => (
                           <div
                             key={pedido.id}
-                            className={`rounded border px-1 py-0.5 text-xs font-medium ${
+                            className={`rounded border px-0.5 sm:px-1 py-0.5 text-[9px] sm:text-xs font-medium ${
                               ESTADO_COLORES[pedido.estado] ?? "bg-gray-100 text-gray-700"
                             }`}
                           >
-                            <div className="flex items-center justify-between gap-1">
+                            <div className="flex items-center justify-between gap-0.5">
                               <button
                                 onClick={() =>
                                   setPedidoSeleccionado((prev) =>
@@ -224,11 +223,12 @@ export function CalendarView() {
                                 }
                                 className="min-w-0 flex-1 truncate text-left transition-opacity hover:opacity-80"
                               >
-                                {pedido.cliente_nombre}
+                                <span className="hidden sm:inline">{pedido.cliente_nombre}</span>
+                                <span className="sm:hidden">{pedido.cliente_nombre.split(" ")[0]}</span>
                               </button>
                               <Link
                                 href={`/pedidos?pedido=${pedido.id}`}
-                                className="shrink-0 text-[10px] underline"
+                                className="shrink-0 text-[8px] sm:text-[10px] underline"
                               >
                                 Ir
                               </Link>
