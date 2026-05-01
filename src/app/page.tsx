@@ -1,65 +1,120 @@
-import Image from "next/image";
+import { UpcomingOrders } from "@/components/dashboard/upcoming-orders";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
 
-export default function Home() {
+async function getStatistics() {
+  const supabase = await createSupabaseServerClient();
+  const today = format(new Date(), "yyyy-MM-dd");
+  const monthStart = format(new Date(new Date().setDate(1)), "yyyy-MM-dd");
+
+  try {
+    // Pedidos activos (no entregados ni cancelados)
+    const { data: activeOrders } = await supabase
+      .from("pedidos")
+      .select("id")
+      .in("estado", ["pendiente", "confirmado", "en_produccion", "listo"]);
+
+    // Entregas hoy
+    const { data: todayOrders } = await supabase
+      .from("pedidos")
+      .select("id")
+      .eq("fecha_entrega", today);
+
+    // Ingresos del mes
+    const { data: monthTransactions } = await supabase
+      .from("transacciones")
+      .select("monto")
+      .eq("tipo", "ingreso")
+      .gte("fecha", monthStart);
+
+    // Alertas de stock (stock_actual <= stock_minimo)
+    const { data: lowStock } = await supabase
+      .from("inventario")
+      .select("id")
+      .lte("stock_actual", supabase.from("inventario").select("stock_minimo"));
+
+    // Contar items con stock bajo manualmente
+    const { data: allInventory } = await supabase
+      .from("inventario")
+      .select("stock_actual, stock_minimo");
+
+    const lowStockCount = (allInventory || []).filter(
+      (item: any) => Number(item.stock_actual) <= Number(item.stock_minimo)
+    ).length;
+
+    const monthlyIncome = (monthTransactions || [])
+      .reduce((sum: number, t: any) => sum + Number(t.monto), 0)
+      .toLocaleString("es-AR", { style: "currency", currency: "ARS" });
+
+    return {
+      activeOrders: (activeOrders || []).length,
+      todayOrders: (todayOrders || []).length,
+      monthlyIncome,
+      lowStockCount,
+    };
+  } catch (error) {
+    console.error("Error fetching statistics:", error);
+    return {
+      activeOrders: 0,
+      todayOrders: 0,
+      monthlyIncome: "$0",
+      lowStockCount: 0,
+    };
+  }
+}
+
+export default async function DashboardPage() {
+  const stats = await getStatistics();
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+    <section className="space-y-4">
+      <div>
+        <h2 className="text-2xl font-semibold">Dashboard</h2>
+        <p className="text-sm text-muted-foreground">
+          Resumen de pedidos próximos y estado general del negocio.
+        </p>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">Pedidos activos</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-semibold">{stats.activeOrders}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">Entregas hoy</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-semibold">{stats.todayOrders}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">Ingresos del mes</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-semibold">{stats.monthlyIncome}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">Alertas de stock</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-semibold text-orange-600">
+              {stats.lowStockCount}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <UpcomingOrders />
+    </section>
   );
 }
