@@ -20,20 +20,20 @@ export async function GET() {
     const result = (data ?? []).map((pedido) => ({
       ...pedido,
       total: Number(pedido.total),
-      items: (pedido.pedido_items ?? []).map((item) => ({
-        id: item.id,
-        pedido_id: item.pedido_id,
-        producto_id: item.producto_id,
-        cantidad: Number(item.cantidad),
-        producto_nombre: Array.isArray(item.productos)
-          ? item.productos[0]?.nombre ?? ""
-          : item.productos?.nombre ?? "",
-        producto_precio: Number(
-          Array.isArray(item.productos)
-            ? item.productos[0]?.precio ?? 0
-            : item.productos?.precio ?? 0
-        ),
-      })),
+      items: (pedido.pedido_items ?? []).map((item) => {
+        const productoRelacionado = Array.isArray(item.productos)
+          ? item.productos[0]
+          : null;
+
+        return {
+          id: item.id,
+          pedido_id: item.pedido_id,
+          producto_id: item.producto_id,
+          cantidad: Number(item.cantidad),
+          producto_nombre: productoRelacionado?.nombre ?? "",
+          producto_precio: Number(productoRelacionado?.precio ?? 0),
+        };
+      }),
     }));
 
     return NextResponse.json(result);
