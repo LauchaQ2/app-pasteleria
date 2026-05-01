@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -173,6 +174,12 @@ export function ClientsCrud() {
                 <p className="text-sm text-muted-foreground">{cliente.email ?? "Sin email"}</p>
               </div>
               <div className="flex flex-wrap gap-2">
+                <Link
+                  href={`/pedidos?cliente=${cliente.id}`}
+                  className="text-xs text-primary underline"
+                >
+                  Ver pedidos
+                </Link>
                 <Button variant="outline" size="sm" onClick={() => onEdit(cliente)}>
                   Editar
                 </Button>

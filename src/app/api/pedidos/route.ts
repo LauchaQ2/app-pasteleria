@@ -128,6 +128,79 @@ export async function POST(request: Request) {
       }
     }
 
+    // Validar disponibilidad de stock
+    const { data: recetas, error: recetasError } = await supabase
+      .from("producto_recetas")
+      .select(
+        "producto_id,cantidad,inventario:inventario_id(id,ingrediente,unidad,stock_actual)"
+      )
+      .in("producto_id", items.map((item) => item.producto_id));
+
+    if (recetasError && recetasError.code !== "42P01") {
+      return NextResponse.json({ error: recetasError.message }, { status: 500 });
+    }
+
+    // Agrupar recetas por producto
+    const recetasPorProducto = new Map<
+      string,
+      Array<{ inventario_id: string; ingrediente: string; cantidad: number; stock_actual: number }>
+    >();
+
+    for (const receta of recetas ?? []) {
+      const inv = Array.isArray(receta.inventario)
+        ? receta.inventario[0]
+        : receta.inventario;
+
+      if (!inv) continue;
+
+      const entry = {
+        inventario_id: inv.id,
+        ingrediente: inv.ingrediente,
+        cantidad: Number(receta.cantidad),
+        stock_actual: Number(inv.stock_actual),
+      };
+
+      const existing = recetasPorProducto.get(receta.producto_id) ?? [];
+      existing.push(entry);
+      recetasPorProducto.set(receta.producto_id, existing);
+    }
+
+    // Validar que haya suficiente stock para cada item
+    // Primero agrupar items por producto para acumular cantidades
+    const productosCantidades = new Map<string, number>();
+    for (const item of items) {
+      const actual = productosCantidades.get(item.producto_id) ?? 0;
+      productosCantidades.set(item.producto_id, actual + Number(item.cantidad));
+    }
+
+    const ingredientesADescontar = new Map<string, number>();
+
+    // Validar stock para la cantidad TOTAL de cada producto
+    for (const [productoId, cantidadTotal] of productosCantidades) {
+      const receta = recetasPorProducto.get(productoId);
+      if (!receta || receta.length === 0) {
+        // Si no tiene receta, se considera disponible sin descuentos
+        continue;
+      }
+
+      for (const ingrediente of receta) {
+        const cantidadNecesaria = ingrediente.cantidad * cantidadTotal;
+        if (ingrediente.stock_actual < cantidadNecesaria) {
+          const producto = productosMap.get(productoId);
+          return NextResponse.json(
+            {
+              error: `Stock insuficiente de "${ingrediente.ingrediente}" para ${cantidadTotal}x ${producto?.nombre ?? "producto"}. Disponible: ${ingrediente.stock_actual}, Necesario: ${cantidadNecesaria}`,
+            },
+            { status: 400 }
+          );
+        }
+
+        // Acumular cantidad a descontar
+        const actual = ingredientesADescontar.get(ingrediente.inventario_id) ?? 0;
+        ingredientesADescontar.set(ingrediente.inventario_id, actual + cantidadNecesaria);
+      }
+    }
+
     const totalCalculado = items.reduce((acc, item) => {
       const producto = productosMap.get(item.producto_id);
       return acc + Number(producto?.precio ?? 0) * Number(item.cantidad);
@@ -181,6 +254,51 @@ export async function POST(request: Request) {
         { status: 500 }
       );
     }
+
+    // Descontar del inventario
+    if (ingredientesADescontar.size > 0) {
+      for (const [inventario_id, cantidadADescontar] of ingredientesADescontar) {
+        // Obtener stock actual
+        const { data: inventarioActual, error: getError } = await supabase
+          .from("inventario")
+          .select("id,stock_actual")
+          .eq("id", inventario_id)
+          .maybeSingle();
+
+        if (getError) {
+          console.error("Error obteniendo stock:", getError);
+          continue;
+        }
+
+        if (!inventarioActual) {
+          console.error("Ingrediente no encontrado:", inventario_id);
+          continue;
+        }
+
+        const nuevoStock = Number(inventarioActual.stock_actual) - Number(cantidadADescontar);
+
+        // Actualizar stock
+        const { error: updateError } = await supabase
+          .from("inventario")
+          .update({ stock_actual: Math.max(0, nuevoStock) })
+          .eq("id", inventario_id);
+
+        if (updateError) {
+          console.error("Error actualizando stock de", inventario_id, updateError);
+        }
+      }
+    }
+
+    // Auto-crear transacción vinculada al pedido con estado pendiente
+    await supabase.from("transacciones").insert({
+      tipo: "ingreso",
+      categoria: "Venta",
+      descripcion: `Pedido de ${cliente.nombre}: ${detalle}`,
+      monto: totalCalculado,
+      fecha: body.fecha_entrega,
+      pedido_id: data.id,
+      estado_pago: body.pagado ? "cobrado" : "pendiente",
+    });
 
     return NextResponse.json(data, { status: 201 });
   } catch {

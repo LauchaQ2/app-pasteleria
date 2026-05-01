@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -45,7 +46,7 @@ const initialForm: PedidoPayload = {
   items: [{ producto_id: "", cantidad: 1 }],
 };
 
-export function OrdersCrud() {
+export function OrdersCrud(props: { clienteIdInicial?: string; pedidoIdInicial?: string }) {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [productos, setProductos] = useState<ProductoDisponibilidad[]>([]);
@@ -53,6 +54,14 @@ export function OrdersCrud() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [clienteIdFiltro, setClienteIdFiltro] = useState<string | null>(
+    props.clienteIdInicial ?? null
+  );
+  const [pedidoIdFiltro, setPedidoIdFiltro] = useState<string | null>(
+    props.pedidoIdInicial ?? null
+  );
+  const router = useRouter();
+  const pathname = usePathname();
 
   const isEditing = useMemo(() => Boolean(editingId), [editingId]);
 
@@ -99,6 +108,34 @@ export function OrdersCrud() {
     void loadProductos();
   }, []);
 
+  useEffect(() => {
+    if (!props.clienteIdInicial) return;
+    setClienteIdFiltro(props.clienteIdInicial);
+    setForm((prev) => ({ ...prev, cliente_id: props.clienteIdInicial ?? "" }));
+  }, [props.clienteIdInicial]);
+
+  useEffect(() => {
+    setPedidoIdFiltro(props.pedidoIdInicial ?? null);
+  }, [props.pedidoIdInicial]);
+
+  function clearClienteFilter() {
+    setClienteIdFiltro(null);
+    router.replace(pathname);
+  }
+
+  function clearPedidoFilter() {
+    setPedidoIdFiltro(null);
+    router.replace(pathname);
+  }
+
+  function getPedidoNumero(pedidoId: string) {
+    const hash = [...pedidoId].reduce(
+      (acc, char) => (acc * 31 + char.charCodeAt(0)) % 1_000_000,
+      0
+    );
+    return hash.toString().padStart(6, "0");
+  }
+
   const totalPedido = useMemo(() => {
     return form.items.reduce((acc, item) => {
       const producto = productos.find((entry) => entry.id === item.producto_id);
@@ -115,9 +152,39 @@ export function OrdersCrud() {
       return;
     }
 
-    if (form.items.filter((item) => item.producto_id && item.cantidad > 0).length === 0) {
+    const itemsValidos = form.items.filter((item) => item.producto_id && item.cantidad > 0);
+    if (itemsValidos.length === 0) {
       setError("Debes agregar al menos un producto");
       return;
+    }
+
+    // Agrupar productos duplicados para validar stock total
+    const productosEnPedido = new Map<string, number>();
+    for (const item of itemsValidos) {
+      const actual = productosEnPedido.get(item.producto_id) ?? 0;
+      productosEnPedido.set(item.producto_id, actual + Number(item.cantidad));
+    }
+
+    // Validar stock disponible para cada producto (considerando cantidad total)
+    for (const [productoId, cantidadTotal] of productosEnPedido) {
+      const producto = productos.find((p) => p.id === productoId);
+      if (!producto) continue;
+
+      // Calcular ingredientes que faltan para la cantidad total
+      const ingredientesFaltantes = producto.ingredientesFaltantes.map((f) => ({
+        ...f,
+        stockNecesario: f.stockNecesario * cantidadTotal,
+      }));
+
+      const tieneProblemas = ingredientesFaltantes.some((f) => f.stockActual < f.stockNecesario);
+      if (tieneProblemas) {
+        const detalles = ingredientesFaltantes
+          .filter((f) => f.stockActual < f.stockNecesario)
+          .map((f) => `${f.ingrediente} (hay ${f.stockActual} ${f.unidad}, necesita ${f.stockNecesario} ${f.unidad})`)
+          .join("; ");
+        setError(`No hay stock suficiente para ${cantidadTotal}x ${producto.nombre}: ${detalles}`);
+        return;
+      }
     }
 
     const requestInit: RequestInit = {
@@ -196,6 +263,59 @@ export function OrdersCrud() {
     }));
   }
 
+  // Validar si una cantidad específica de un producto está disponible
+  // Considera si el producto aparece varias veces en el formulario
+  function getProductoAvailabilityForQuantity(
+    productoId: string,
+    cantidadEnFila: number
+  ): { disponible: boolean; faltantes: Array<{ ingrediente: string; stockActual: number; stockNecesario: number; unidad: string }> } {
+    const producto = productos.find((p) => p.id === productoId);
+    if (!producto) return { disponible: false, faltantes: [] };
+
+    // Calcular cantidad total del producto en TODO el formulario
+    const cantidadTotalEnPedido = form.items
+      .filter((item) => item.producto_id === productoId)
+      .reduce((sum, item) => sum + Number(item.cantidad), 0);
+
+    // Ajustar ingredientes faltantes considerando la cantidad TOTAL pedida
+    const ingredientesFaltantesAjustados = producto.ingredientesFaltantes.map((f) => ({
+      ...f,
+      stockNecesario: f.stockNecesario * cantidadTotalEnPedido,
+    }));
+
+    // Si hay ingredientes que no cumplen stock, marcar como no disponible
+    const tieneStockInsuficiente = ingredientesFaltantesAjustados.some(
+      (f) => f.stockActual < f.stockNecesario
+    );
+
+    return {
+      disponible: !tieneStockInsuficiente && producto.disponible,
+      faltantes: ingredientesFaltantesAjustados.filter((f) => f.stockActual < f.stockNecesario),
+    };
+  }
+
+  // --- Sort y filtro ---
+  const [filtroEstado, setFiltroEstado] = useState<string>("todos");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+
+  const pedidosFiltrados = useMemo(() => {
+    let lista = [...pedidos];
+    if (pedidoIdFiltro) {
+      lista = lista.filter((p) => p.id === pedidoIdFiltro);
+    }
+    if (clienteIdFiltro) {
+      lista = lista.filter((p) => p.cliente_id === clienteIdFiltro);
+    }
+    if (filtroEstado !== "todos") {
+      lista = lista.filter((p) => p.estado === filtroEstado);
+    }
+    lista.sort((a, b) => {
+      const diff = a.fecha_entrega.localeCompare(b.fecha_entrega);
+      return sortDir === "asc" ? diff : -diff;
+    });
+    return lista;
+  }, [pedidos, pedidoIdFiltro, clienteIdFiltro, filtroEstado, sortDir]);
+
   return (
     <div className="grid gap-4 lg:grid-cols-[360px_1fr]">
       <Card>
@@ -270,12 +390,13 @@ export function OrdersCrud() {
                       </Button>
                     </div>
                     {(() => {
-                      const productoSeleccionado = productos.find((p) => p.id === item.producto_id);
-                      if (!productoSeleccionado || productoSeleccionado.disponible) return null;
+                      if (!item.producto_id) return null;
+                      const disponibilidad = getProductoAvailabilityForQuantity(item.producto_id, item.cantidad);
+                      if (disponibilidad.disponible) return null;
                       return (
                         <div className="rounded-md bg-destructive/10 p-2 text-xs text-destructive">
-                          <p className="font-medium">Stock insuficiente:</p>
-                          {productoSeleccionado.ingredientesFaltantes.map((f) => (
+                          <p className="font-medium">Stock insuficiente para {item.cantidad}x:</p>
+                          {disponibilidad.faltantes.map((f) => (
                             <p key={f.ingrediente}>
                               • {f.ingrediente}: hay {f.stockActual} {f.unidad}, se necesita {f.stockNecesario} {f.unidad}
                             </p>
@@ -356,23 +477,72 @@ export function OrdersCrud() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Pedidos</CardTitle>
+          <CardTitle className="flex flex-wrap items-center justify-between gap-2">
+            <span>
+              Pedidos
+              {clienteIdFiltro && (
+                <span className="ml-2 text-sm text-muted-foreground">
+                  (Cliente: {clientes.find((c) => c.id === clienteIdFiltro)?.nombre ?? "Cargando..."})
+                </span>
+              )}
+              {pedidoIdFiltro ? (
+                <span className="ml-2 text-sm text-muted-foreground">(Pedido filtrado)</span>
+              ) : null}
+            </span>
+            <div className="flex flex-wrap gap-2">
+              {pedidoIdFiltro ? (
+                <Button variant="outline" size="sm" onClick={clearPedidoFilter}>
+                  Quitar filtro pedido
+                </Button>
+              ) : null}
+              {clienteIdFiltro ? (
+                <Button variant="outline" size="sm" onClick={clearClienteFilter}>
+                  Quitar filtro cliente
+                </Button>
+              ) : null}
+              <select
+                className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+                value={filtroEstado}
+                onChange={(e) => setFiltroEstado(e.target.value)}
+              >
+                <option value="todos">Todos los estados</option>
+                {PEDIDO_ESTADOS.map((e) => (
+                  <option key={e} value={e}>{e}</option>
+                ))}
+              </select>
+              <button
+                onClick={() => setSortDir((prev) => (prev === "asc" ? "desc" : "asc"))}
+                className="flex h-8 items-center gap-1 rounded-md border border-input bg-background px-2 text-xs hover:bg-accent"
+              >
+                Fecha {sortDir === "asc" ? "↑" : "↓"}
+              </button>
+            </div>
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {loading ? <p className="text-sm text-muted-foreground">Cargando…</p> : null}
-          {pedidos.map((pedido) => (
+          {pedidosFiltrados.length === 0 && !loading ? (
+            <p className="text-sm text-muted-foreground">No hay pedidos para mostrar.</p>
+          ) : null}
+          {pedidosFiltrados.map((pedido) => (
             <article
               key={pedido.id}
               className="flex flex-col gap-2 rounded-md border p-3 md:flex-row md:items-center md:justify-between"
             >
               <div>
-                <p className="font-medium">{pedido.cliente_nombre}</p>
-                <p className="text-sm text-muted-foreground">{pedido.detalle}</p>
+                <p className="text-2xl font-bold leading-none">#{getPedidoNumero(pedido.id)}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{pedido.cliente_nombre}</p>
                 <p className="text-sm text-muted-foreground">Entrega: {pedido.fecha_entrega}</p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <Badge>{pedido.estado}</Badge>
                 <span className="text-sm font-medium">${Number(pedido.total).toFixed(2)}</span>
+                <Link
+                  href={`/finanzas?pedido=${pedido.id}`}
+                  className="text-xs text-primary underline"
+                >
+                  Ver transacción
+                </Link>
                 <Button variant="outline" size="sm" onClick={() => onEdit(pedido)}>
                   Editar
                 </Button>

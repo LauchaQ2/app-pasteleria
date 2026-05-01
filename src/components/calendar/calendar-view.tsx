@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   addDays,
   addMonths,
@@ -208,19 +209,31 @@ export function CalendarView() {
 
                       <div className="space-y-1">
                         {pedidosDia.map((pedido) => (
-                          <button
+                          <div
                             key={pedido.id}
-                            onClick={() =>
-                              setPedidoSeleccionado((prev) =>
-                                prev?.id === pedido.id ? null : pedido
-                              )
-                            }
-                            className={`w-full truncate rounded border px-1 py-0.5 text-left text-xs font-medium transition-opacity hover:opacity-80 ${
+                            className={`rounded border px-1 py-0.5 text-xs font-medium ${
                               ESTADO_COLORES[pedido.estado] ?? "bg-gray-100 text-gray-700"
                             }`}
                           >
-                            {pedido.cliente_nombre}
-                          </button>
+                            <div className="flex items-center justify-between gap-1">
+                              <button
+                                onClick={() =>
+                                  setPedidoSeleccionado((prev) =>
+                                    prev?.id === pedido.id ? null : pedido
+                                  )
+                                }
+                                className="min-w-0 flex-1 truncate text-left transition-opacity hover:opacity-80"
+                              >
+                                {pedido.cliente_nombre}
+                              </button>
+                              <Link
+                                href={`/pedidos?pedido=${pedido.id}`}
+                                className="shrink-0 text-[10px] underline"
+                              >
+                                Ir
+                              </Link>
+                            </div>
+                          </div>
                         ))}
                       </div>
                     </div>
@@ -256,6 +269,9 @@ export function CalendarView() {
               >
                 {pedidoSeleccionado.estado}
               </Badge>
+              <Link href={`/pedidos?pedido=${pedidoSeleccionado.id}`}>
+                <Button size="sm" variant="outline">Ir al pedido</Button>
+              </Link>
               <Button
                 size="sm"
                 variant="outline"

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -50,6 +51,12 @@ export async function UpcomingOrders() {
               <div className="flex items-center gap-2">
                 <Badge>{pedido.estado}</Badge>
                 <span className="text-sm font-medium">${pedido.total}</span>
+                <Link
+                  href={`/pedidos?pedido=${pedido.id}`}
+                  className="text-xs text-primary underline"
+                >
+                  Ver pedido
+                </Link>
               </div>
             </div>
           ))

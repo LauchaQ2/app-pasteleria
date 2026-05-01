@@ -16,6 +16,7 @@ export async function PATCH(
       monto: number;
       fecha: string;
       pedido_id?: string;
+      estado_pago?: "pendiente" | "cobrado" | "cancelado";
     };
 
     const supabase = createSupabaseServerClient();
@@ -28,6 +29,7 @@ export async function PATCH(
         monto: body.monto,
         fecha: body.fecha,
         pedido_id: body.pedido_id ?? null,
+        estado_pago: body.estado_pago ?? "pendiente",
       })
       .eq("id", id)
       .select();

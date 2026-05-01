@@ -6,7 +6,7 @@ export async function GET() {
   const supabase = createSupabaseServerClient();
   const { data, error } = await supabase
     .from("transacciones")
-    .select("id,tipo,categoria,descripcion,monto,fecha,pedido_id,created_at")
+    .select("id,tipo,categoria,descripcion,monto,fecha,pedido_id,estado_pago,created_at")
     .order("fecha", { ascending: false });
 
   if (error) {
@@ -25,6 +25,7 @@ export async function POST(request: Request) {
       monto: number;
       fecha: string;
       pedido_id?: string;
+      estado_pago?: "pendiente" | "cobrado" | "cancelado";
     };
 
     const supabase = createSupabaseServerClient();
@@ -37,6 +38,7 @@ export async function POST(request: Request) {
         monto: body.monto,
         fecha: body.fecha,
         pedido_id: body.pedido_id ?? null,
+        estado_pago: body.estado_pago ?? "pendiente",
       })
       .select()
       .single();

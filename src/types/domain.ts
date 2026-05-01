@@ -80,6 +80,7 @@ export interface InventarioItem {
 }
 
 export type TransaccionTipo = "ingreso" | "egreso";
+export type TransaccionEstadoPago = "pendiente" | "cobrado" | "cancelado";
 
 export interface Transaccion {
   id: string;
@@ -90,4 +91,5 @@ export interface Transaccion {
   fecha: string;
   pedido_id: string | null;
   created_at: string;
+  estado_pago: TransaccionEstadoPago;
 }

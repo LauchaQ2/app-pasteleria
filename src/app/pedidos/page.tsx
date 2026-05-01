@@ -1,6 +1,10 @@
 import { OrdersCrud } from "@/components/orders/orders-crud";
 
-export default function PedidosPage() {
+export default async function PedidosPage(props: {
+  searchParams?: Promise<{ cliente?: string; pedido?: string }>;
+}) {
+  const searchParams = await props.searchParams;
+
   return (
     <section className="space-y-4">
       <div>
@@ -9,7 +13,10 @@ export default function PedidosPage() {
           Registro completo de pedidos: creación, edición, estados y eliminación.
         </p>
       </div>
-      <OrdersCrud />
+      <OrdersCrud
+        clienteIdInicial={searchParams?.cliente}
+        pedidoIdInicial={searchParams?.pedido}
+      />
     </section>
   );
 }
