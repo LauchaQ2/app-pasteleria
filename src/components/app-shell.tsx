@@ -10,7 +10,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex min-h-screen bg-background text-foreground">
       <aside className="hidden w-64 border-r bg-card p-4 md:block">
         <p className="mb-6 text-lg font-semibold">Pastelería Manager</p>
         <nav className="space-y-1">
@@ -22,7 +22,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 "flex items-center gap-2 rounded-md px-3 py-2 text-sm",
                 pathname === href
                   ? "bg-primary text-primary-foreground"
-                  : "hover:bg-accent"
+                  : "text-foreground hover:bg-accent"
               )}
             >
               <Icon className="h-4 w-4" />
@@ -49,7 +49,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 "min-w-18 flex flex-col items-center rounded-md px-2 py-2 text-[11px]",
                 pathname === href
                   ? "bg-primary text-primary-foreground"
-                  : "hover:bg-accent"
+                  : "text-foreground hover:bg-accent"
               )}
             >
               <Icon className="mb-1 h-4 w-4" />
