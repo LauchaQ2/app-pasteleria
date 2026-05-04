@@ -171,6 +171,36 @@ export async function DELETE(
 ) {
   const { id } = await context.params;
   const supabase = createSupabaseServerClient();
+
+  // Validar que el pedido esté en estado "cancelado" antes de permitir eliminación
+  const { data: pedido, error: fetchError } = await supabase
+    .from("pedidos")
+    .select("id,estado")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (fetchError) {
+    return NextResponse.json({ error: fetchError.message }, { status: 500 });
+  }
+
+  if (!pedido) {
+    return NextResponse.json({ error: "Pedido no encontrado" }, { status: 404 });
+  }
+
+  if (pedido.estado !== "cancelado") {
+    return NextResponse.json(
+      { error: "Solo se pueden eliminar pedidos cancelados. Primero cancelá el pedido." },
+      { status: 400 }
+    );
+  }
+
+  // Eliminar transacción asociada
+  await supabase.from("transacciones").delete().eq("pedido_id", id);
+
+  // Eliminar items del pedido
+  await supabase.from("pedido_items").delete().eq("pedido_id", id);
+
+  // Eliminar el pedido
   const { error } = await supabase.from("pedidos").delete().eq("id", id);
 
   if (error) {

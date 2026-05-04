@@ -207,10 +207,23 @@ export function OrdersCrud(props: { clienteIdInicial?: string; pedidoIdInicial?:
     await loadPedidos();
   }
 
+  async function onCancelar(id: string) {
+    if (!confirm("¿Cancelar este pedido? Se repondrá el stock de ingredientes y se cancelará la transacción asociada.")) return;
+    const response = await fetch(`/api/pedidos/${id}/cancelar`, { method: "POST" });
+    if (!response.ok) {
+      const payload = (await response.json()) as { error?: string };
+      setError(payload.error ?? "No se pudo cancelar el pedido");
+      return;
+    }
+    await loadPedidos();
+  }
+
   async function onDelete(id: string) {
+    if (!confirm("¿Eliminar definitivamente este pedido? Esta acción no se puede deshacer.")) return;
     const response = await fetch(`/api/pedidos/${id}`, { method: "DELETE" });
     if (!response.ok) {
-      setError("No se pudo eliminar el pedido");
+      const payload = (await response.json()) as { error?: string };
+      setError(payload.error ?? "No se pudo eliminar el pedido");
       return;
     }
     await loadPedidos();
@@ -543,16 +556,30 @@ export function OrdersCrud(props: { clienteIdInicial?: string; pedidoIdInicial?:
                 >
                   Ver transacción
                 </Link>
-                <Button variant="outline" size="sm" onClick={() => onEdit(pedido)}>
-                  Editar
-                </Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => void onDelete(pedido.id)}
-                >
-                  Eliminar
-                </Button>
+                {pedido.estado !== "cancelado" && pedido.estado !== "entregado" ? (
+                  <Button variant="outline" size="sm" onClick={() => onEdit(pedido)}>
+                    Editar
+                  </Button>
+                ) : null}
+                {pedido.estado !== "cancelado" ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-orange-400 text-orange-600 hover:bg-orange-50"
+                    onClick={() => void onCancelar(pedido.id)}
+                  >
+                    Cancelar
+                  </Button>
+                ) : null}
+                {pedido.estado === "cancelado" ? (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => void onDelete(pedido.id)}
+                  >
+                    Eliminar
+                  </Button>
+                ) : null}
               </div>
             </article>
           ))}
