@@ -17,7 +17,8 @@ export async function UpcomingOrders() {
       .select("id,cliente_nombre,estado,fecha_entrega,total")
       .gte("fecha_entrega", new Date().toISOString().slice(0, 10))
       .order("fecha_entrega", { ascending: true })
-      .limit(8);
+      .limit(8)
+      .throwOnError();
 
     pedidos = (data ?? []) as DashboardPedido[];
   } catch {

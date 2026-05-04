@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { UpcomingOrders } from "@/components/dashboard/upcoming-orders";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
