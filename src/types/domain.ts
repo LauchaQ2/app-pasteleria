@@ -93,3 +93,24 @@ export interface Transaccion {
   created_at: string;
   estado_pago: TransaccionEstadoPago;
 }
+
+export const PRODUCCION_ETAPAS = [
+  "masa",
+  "horneado",
+  "relleno",
+  "decoracion",
+  "empaque",
+  "otro",
+] as const;
+
+export type ProduccionEtapa = (typeof PRODUCCION_ETAPAS)[number];
+
+export interface ProduccionTarea {
+  id: string;
+  titulo: string;
+  descripcion: string | null;
+  fecha: string;
+  etapa: ProduccionEtapa;
+  completado: boolean;
+  created_at: string;
+}

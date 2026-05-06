@@ -70,6 +70,16 @@ create table if not exists public.producto_recetas (
   unique (producto_id, inventario_id)
 );
 
+create table if not exists public.produccion_tareas (
+  id uuid primary key default gen_random_uuid(),
+  titulo text not null,
+  descripcion text,
+  fecha date not null,
+  etapa text not null default 'otro' check (etapa in ('masa','horneado','relleno','decoracion','empaque','otro')),
+  completado boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
 create index if not exists idx_pedidos_fecha_entrega on public.pedidos(fecha_entrega);
 create index if not exists idx_pedidos_estado on public.pedidos(estado);
 create index if not exists idx_inventario_stock on public.inventario(stock_actual, stock_minimo);
@@ -78,6 +88,8 @@ create index if not exists idx_pedido_items_pedido on public.pedido_items(pedido
 create index if not exists idx_pedido_items_producto on public.pedido_items(producto_id);
 create index if not exists idx_producto_recetas_producto on public.producto_recetas(producto_id);
 create index if not exists idx_producto_recetas_inventario on public.producto_recetas(inventario_id);
+create index if not exists idx_produccion_tareas_fecha on public.produccion_tareas(fecha);
+create index if not exists idx_produccion_tareas_etapa on public.produccion_tareas(etapa);
 
 alter table public.clientes enable row level security;
 alter table public.productos enable row level security;
@@ -86,6 +98,7 @@ alter table public.pedidos enable row level security;
 alter table public.transacciones enable row level security;
 alter table public.pedido_items enable row level security;
 alter table public.producto_recetas enable row level security;
+alter table public.produccion_tareas enable row level security;
 
 drop policy if exists "public read clientes" on public.clientes;
 drop policy if exists "public read productos" on public.productos;
@@ -94,6 +107,7 @@ drop policy if exists "public read pedidos" on public.pedidos;
 drop policy if exists "public read transacciones" on public.transacciones;
 drop policy if exists "public read pedido_items" on public.pedido_items;
 drop policy if exists "public read producto_recetas" on public.producto_recetas;
+drop policy if exists "public read produccion_tareas" on public.produccion_tareas;
 
 drop policy if exists "public write clientes" on public.clientes;
 drop policy if exists "public write productos" on public.productos;
@@ -102,6 +116,7 @@ drop policy if exists "public write pedidos" on public.pedidos;
 drop policy if exists "public write transacciones" on public.transacciones;
 drop policy if exists "public write pedido_items" on public.pedido_items;
 drop policy if exists "public write producto_recetas" on public.producto_recetas;
+drop policy if exists "public write produccion_tareas" on public.produccion_tareas;
 
 drop policy if exists "public update clientes" on public.clientes;
 drop policy if exists "public update productos" on public.productos;
@@ -110,6 +125,7 @@ drop policy if exists "public update pedidos" on public.pedidos;
 drop policy if exists "public update transacciones" on public.transacciones;
 drop policy if exists "public update pedido_items" on public.pedido_items;
 drop policy if exists "public update producto_recetas" on public.producto_recetas;
+drop policy if exists "public update produccion_tareas" on public.produccion_tareas;
 
 drop policy if exists "public delete clientes" on public.clientes;
 drop policy if exists "public delete productos" on public.productos;
@@ -118,6 +134,7 @@ drop policy if exists "public delete pedidos" on public.pedidos;
 drop policy if exists "public delete transacciones" on public.transacciones;
 drop policy if exists "public delete pedido_items" on public.pedido_items;
 drop policy if exists "public delete producto_recetas" on public.producto_recetas;
+drop policy if exists "public delete produccion_tareas" on public.produccion_tareas;
 
 drop policy if exists "authenticated write clientes" on public.clientes;
 drop policy if exists "authenticated write productos" on public.productos;
@@ -126,6 +143,7 @@ drop policy if exists "authenticated write pedidos" on public.pedidos;
 drop policy if exists "authenticated write transacciones" on public.transacciones;
 drop policy if exists "authenticated write pedido_items" on public.pedido_items;
 drop policy if exists "authenticated write producto_recetas" on public.producto_recetas;
+drop policy if exists "authenticated write produccion_tareas" on public.produccion_tareas;
 
 -- Allow public read access to all tables
 create policy "public read clientes"
@@ -156,6 +174,10 @@ create policy "public read producto_recetas"
 on public.producto_recetas for select
 using (true);
 
+create policy "public read produccion_tareas"
+on public.produccion_tareas for select
+using (true);
+
 -- Allow public write access to all tables
 create policy "public write clientes"
 on public.clientes for insert
@@ -183,6 +205,10 @@ with check (true);
 
 create policy "public write producto_recetas"
 on public.producto_recetas for insert
+with check (true);
+
+create policy "public write produccion_tareas"
+on public.produccion_tareas for insert
 with check (true);
 
 create policy "public update clientes"
@@ -220,6 +246,11 @@ on public.producto_recetas for update
 using (true)
 with check (true);
 
+create policy "public update produccion_tareas"
+on public.produccion_tareas for update
+using (true)
+with check (true);
+
 create policy "public delete clientes"
 on public.clientes for delete
 using (true);
@@ -246,4 +277,8 @@ using (true);
 
 create policy "public delete producto_recetas"
 on public.producto_recetas for delete
+using (true);
+
+create policy "public delete produccion_tareas"
+on public.produccion_tareas for delete
 using (true);

@@ -1,0 +1,24 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">La Misma Receta emblem</title>
+  <desc id="desc">Circular pastry icon for social avatars and favicons.</desc>
+  <defs>
+    <linearGradient id="ring" x1="72" y1="72" x2="440" y2="440" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#C07A4B"/>
+      <stop offset="1" stop-color="#8F4E2A"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="16" y="16" width="480" height="480" rx="104" fill="#FFF6EE"/>
+  <circle cx="256" cy="256" r="184" fill="#FFFDF9" stroke="url(#ring)" stroke-width="10"/>
+  <path d="M256 122C308 122 355 150 375 196C392 235 386 282 359 317C333 351 293 372 256 372C219 372 179 351 153 317C126 282 120 235 137 196C157 150 204 122 256 122Z" fill="#FFF1E4"/>
+
+  <path d="M170 260C200 229 229 214 256 214C283 214 312 229 342 260" stroke="#9D5932" stroke-width="13" stroke-linecap="round"/>
+  <path d="M188 301C214 277 236 266 256 266C276 266 298 277 324 301" stroke="#9D5932" stroke-width="11" stroke-linecap="round"/>
+
+  <circle cx="193" cy="214" r="8" fill="#C88256"/>
+  <circle cx="319" cy="214" r="8" fill="#C88256"/>
+  <circle cx="256" cy="186" r="8" fill="#C88256"/>
+
+  <path d="M256 92V140" stroke="#9D5932" stroke-width="9" stroke-linecap="round"/>
+  <path d="M232 118L256 92L280 118" stroke="#9D5932" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

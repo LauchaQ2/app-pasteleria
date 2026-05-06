@@ -6,7 +6,7 @@ export default function CalendarioPage() {
       <div>
         <h2 className="text-2xl font-semibold">Calendario</h2>
         <p className="text-sm text-muted-foreground">
-          Visualizá las entregas por semana, quincena o mes. Tocá un pedido para ver el detalle.
+          Visualiza entregas y planifica produccion por dia (masa, horneado, decoracion y mas) con recordatorios.
         </p>
       </div>
 
